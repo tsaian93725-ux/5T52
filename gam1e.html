@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon Adventure - 地牢冒险</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* 选择界面样式 */
+        .character-selection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .selection-title {
+            font-size: 36px;
+            text-shadow: 0 0 10px #ff6b6b;
+            margin-bottom: 20px;
+        }
+
+        .characters-container {
+            display: flex;
+            gap: 50px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .character-card {
+            width: 250px;
+            background: #2d2d2d;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+
+        .character-card.selected {
+            border-color: #4ecdc4;
+            box-shadow: 0 0 20px #4ecdc4;
+            transform: scale(1.05);
+        }
+
+        .character-card img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            background: #3d3d3d;
+        }
+
+        .character-name {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+
+        .character-stats {
+            text-align: left;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .character-skills {
+            text-align: left;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .start-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .start-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .start-btn:hover:not(:disabled) {
+            background: #ff4949;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,73,73,0.4);
+        }
+
+        /* 战斗界面样式 */
+        .battle-screen {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            height: 700px;
+            position: relative;
+            background: #0a0a0a;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .battle-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('assets/backgrounds/fight/fight.png');
+            background-size: cover;
+            background-position: center;
+            z-index: 0;
+        }
+
+        .battle-background.darkened {
+            background-color: #000;
+            background-blend-mode: multiply;
+        }
+
+        .battle-message {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px #ff6b6b;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .battle-message.visible {
+            opacity: 1;
+        }
+
+        .player-area {
+            position: absolute;
+            bottom: 100px;
+            right: 100px;
+            width: 200px;
+            height: 300px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .enemies-area {
+            position: absolute;
+            bottom: 100px;
+            left: 100px;
+            width: 700px;
+            height: 300px;
+            z-index: 5;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+        }
+
+        .combatant {
+            position: relative;
+            width: 150px;
+            height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .combatant.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .combatant-img {
+            width: 120px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            background: #3d3d3d;
+            border: 2px solid #4ecdc4;
+        }
+
+        .enemy .combatant-img {
+            border-color: #ff6b6b;
+        }
+
+        .health-bar {
+            width: 100%;
+            height: 20px;
+            background: #660000;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 2px solid #fff;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: #00cc00;
+            transition: width 0.3s ease;
+        }
+
+        .combatant-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #fff;
+            text-shadow: 0 0 5px #000;
+        }
+
+        .skills-area {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        .skill-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #2d2d2d;
+            color: #fff;
+            border: 2px solid #4ecdc4;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 150px;
+        }
+
+        .skill-btn:hover:not(:disabled) {
+            background: #4ecdc4;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78,205,196,0.4);
+        }
+
+        .skill-btn:disabled {
+            background: #444;
+            border-color: #666;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .skill-btn.ultimate {
+            border-color: #ffd700;
+            background: #3a3a2a;
+        }
+
+        .skill-btn.ultimate:hover:not(:disabled) {
+            background: #ffd700;
+            color: #000;
+            box-shadow: 0 5px 15px rgba(255,215,0,0.4);
+        }
+
+        .energy-bar-container {
+            position: absolute;
+            top: 80px;
+            right: 50px;
+            width: 300px;
+            height: 30px;
+            background: #2d2d2d;
+            border-radius: 15px;
+            padding: 3px;
+            z-index: 10;
+            border: 2px solid #ffd700;
+        }
+
+        .energy-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd700, #ff6b35);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+
+        .energy-label {
+            position: absolute;
+            top: -25px;
+            right: 0;
+            color: #ffd700;
+            font-weight: bold;
+            text-shadow: 0 0 5px #000;
+        }
+
+        /* 特效样式 */
+        .effect {
+            position: absolute;
+            pointer-events: none;
+            z-index: 8;
+        }
+
+        .slash-effect {
+            width: 80px;
+            height: 3px;
+            background: #fff;
+            box-shadow: 0 0 10px #fff;
+            transform-origin: left center;
+            opacity: 0;
+        }
+
+        .slash-effect.long {
+            width: 1000px;
+            height: 5px;
+            background: #fff;
+            box-shadow: 0 0 20px #fff;
+        }
+
+        .hit-effect {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,0,0,0.7);
+            box-shadow: 0 0 15px #ff0000;
+            opacity: 0;
+        }
+
+        .energy-ball {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(0,191,255,0.5);
+            box-shadow: 0 0 20px #00bfff, inset 0 0 15px #0080ff;
+            border: 2px solid #00bfff;
+            opacity: 0;
+        }
+
+        .void-ball {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(128,0,128,0.7);
+            box-shadow: 0 0 20px #800080, 0 0 30px #ff00ff;
+            border: 2px solid #ff00ff;
+            opacity: 0;
+            transform-origin: center;
+        }
+
+        .lightning-effect {
+            position: absolute;
+            width: 2px;
+            background: linear-gradient(90deg, transparent, #ff00ff, transparent);
+            opacity: 0;
+            z-index: 7;
+        }
+
+        .explosion-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(128,0,128,0.6);
+            box-shadow: 0 0 30px #800080, 0 0 40px #ff00ff;
+            opacity: 0;
+            z-index: 8;
+        }
+
+        /* 动画关键帧 */
+        @keyframes attackMove {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-50px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes enemyAttackMove {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(50px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes hurtShake {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(5px); }
+            40% { transform: translateX(-5px); }
+            60% { transform: translateX(5px); }
+            80% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes hurtFlash {
+            0% { box-shadow: 0 0 10px #ff0000; }
+            50% { box-shadow: 0 0 20px #ff0000, 0 0 30px #ff0000; }
+            100% { box-shadow: none; }
+        }
+
+        @keyframes slashSlide {
+            0% { opacity: 1; transform: rotate(var(--rotate)) translateX(-50%); }
+            100% { opacity: 0; transform: rotate(var(--rotate)) translateX(100px); }
+        }
+
+        @keyframes longSlashSlide {
+            0% { opacity: 1; transform: rotate(var(--rotate)) translateX(-50%); }
+            100% { opacity: 0; transform: rotate(var(--rotate)) translateX(500px); }
+        }
+
+        @keyframes hitPulse {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+
+        @keyframes energyBallPulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes voidGrow {
+            0% { opacity: 1; transform: scale(1) rotate(0deg); }
+            100% { opacity: 1; transform: scale(5) rotate(360deg); }
+        }
+
+        @keyframes voidFly {
+            0% { opacity: 1; transform: scale(5) rotate(360deg); }
+            100% { opacity: 1; transform: scale(5) rotate(720deg) translateX(var(--translate-x)) translateY(var(--translate-y)); }
+        }
+
+        @keyframes explosionPulse {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(3); }
+        }
+
+        @keyframes lightningFlicker {
+            0% { opacity: 0; height: 20px; }
+            50% { opacity: 1; height: 60px; }
+            100% { opacity: 0; height: 20px; }
+        }
+
+        .combatant.attacking {
+            animation: attackMove 0.5s ease;
+        }
+
+        .enemy.attacking {
+            animation: enemyAttackMove 0.5s ease;
+        }
+
+        .combatant.hurt {
+            animation: hurtShake 0.3s ease, hurtFlash 0.3s ease;
+        }
+
+        .slash-effect.active {
+            animation: slashSlide 0.3s ease forwards;
+        }
+
+        .slash-effect.long.active {
+            animation: longSlashSlide 0.5s ease forwards;
+        }
+
+        .hit-effect.active {
+            animation: hitPulse 0.5s ease forwards;
+        }
+
+        .energy-ball.active {
+            animation: energyBallPulse 0.1s infinite alternate;
+            opacity: 1;
+        }
+
+        .void-ball.spawning {
+            animation: voidGrow 2s ease forwards;
+            opacity: 1;
+        }
+
+        .void-ball.flying {
+            animation: voidFly 1s ease forwards;
+            opacity: 1;
+        }
+
+        .explosion-effect.active {
+            animation: explosionPulse 0.8s ease forwards;
+        }
+
+        .lightning-effect.active {
+            animation: lightningFlicker 0.2s infinite alternate;
+        }
+
+        /* 结果界面样式 */
+        .result-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .result-screen.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .result-message {
+            font-size: 64px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px;
+        }
+
+        .victory {
+            color: #4ecdc4;
+            text-shadow: 0 0 20px #4ecdc4;
+        }
+
+        .defeat {
+            color: #ff6b6b;
+            text-shadow: 0 0 20px #ff6b6b;
+        }
+
+        .restart-btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #ffd700;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .restart-btn.visible {
+            display: block;
+        }
+
+        .restart-btn:hover {
+            background: #ffc107;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,193,7,0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- 角色选择界面 -->
+    <div class="character-selection" id="character-selection">
+        <h1 class="selection-title">选择你的角色</h1>
+        <div class="characters-container">
+            <!-- 树儺角色卡 -->
+            <div class="character-card" id="character1" data-character="sukuna">
+                <img src="assets/players/player1/idle/sukuna.png" alt="树儺">
+                <h2 class="character-name">树儺</h2>
+                <div class="character-stats">
+                    生命值：1200<br>
+                    攻击力：200<br>
+                    闪避率：30%
+                </div>
+                <div class="character-skills">
+                    技能：普通打击、连续斩击（冷却1回合）<br>
+                    终结技：服魔御廚子（需100%冲能）
+                </div>
+            </div>
+            <!-- 物調角色卡 -->
+            <div class="character-card" id="character2" data-character="gojo">
+                <img src="assets/players/player2/idle1/gojo.png" alt="物調">
+                <h2 class="character-name">物調</h2>
+                <div class="character-stats">
+                    生命值：1000<br>
+                    攻击力：200<br>
+                    闪避率：40%
+                </div>
+                <div class="character-skills">
+                    技能：普通打击、吸引力魔法（冷却1回合）<br>
+                    终结技：虚式（需100%冲能）
+                </div>
+            </div>
+        </div>
+        <button class="start-btn" id="start-btn" disabled>开始游戏</button>
+    </div>
+
+    <!-- 战斗界面 -->
+    <div class="battle-screen" id="battle-screen">
+        <div class="battle-background" id="battle-background"></div>
+        <div class="battle-message" id="battle-message">战斗开始！</div>
+        <div class="energy-bar-container">
+            <span class="energy-label">冲能：<span id="energy-percent">0%</span></span>
+            <div class="energy-bar" id="energy-bar"></div>
+        </div>
+        <div class="player-area" id="player-area">
+            <div class="combatant player" id="player">
+                <img class="combatant-img" id="player-img" src="" alt="玩家角色">
+                <div class="health-bar">
+                    <div class="health-fill" id="player-health" style="width: 100%;"></div>
+                </div>
+                <div class="combatant-name" id="player-name"></div>
+            </div>
+        </div>
+        <div class="enemies-area" id="enemies-area">
+            <!-- 敌人会动态生成 -->
+        </div>
+        <div class="skills-area" id="skills-area">
+            <!-- 技能按钮会动态生成 -->
+        </div>
+        <div class="result-screen" id="result-screen">
+            <div class="result-message" id="result-message"></div>
+            <button class="restart-btn" id="restart-btn">再次游玩</button>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let selectedCharacter = null;
+        let player = null;
+        let enemies = [];
+        let currentSkill = null;
+        let targetEnemy = null;
+        let isPlayerTurn = true;
+        let skillCooldowns = {}; // 技能冷却回合数
+        let energy = 0;
+        let battleState = 'ready'; // ready, player-attacking, enemy-attacking, game-over
+
+        // DOM元素
+        const characterSelection = document.getElementById('character-selection');
+        const battleScreen = document.getElementById('battle-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const battleMessage = document.getElementById('battle-message');
+        const battleBackground = document.getElementById('battle-background');
+        const playerArea = document.getElementById('player-area');
+        const enemiesArea = document.getElementById('enemies-area');
+        const skillsArea = document.getElementById('skills-area');
+        const energyBar = document.getElementById('energy-bar');
+        const energyPercent = document.getElementById('energy-percent');
+        const resultScreen = document.getElementById('result-screen');
+        const resultMessage = document.getElementById('result-message');
+
+        // 角色数据
+        const characterData = {
+            sukuna: {
+                name: '树儺',
+                img: 'assets/players/player1/idle/sukuna.png',
+                maxHp: 1200,
+                atk: 200,
+                dodgeRate: 30,
+                skills: [
+                    {
+                        id: 'normal-attack',
+                        name: '普通打击',
+                        type: 'normal',
+                        damage: 100, // 百分比
+                        hits: 1,
+                        cooldown: 0,
+                        effect: 'hit'
+                    },
+                    {
+                        id: 'slash-attack',
+                        name: '连续斩击',
+                        type: 'special',
+                        damage: 40,
+                        hits: 10,
+                        duration: 1000,
+                        cooldown: 1,
+                        effect: 'slash'
+                    },
+                    {
+                        id: 'ultimate-sukuna',
+                        name: '服魔御廚子',
+                        type: 'ultimate',
+                        damage: 20,
+                        hits: 50,
+                        duration: 5000,
+                        cooldown: 0,
+                        effect: 'long-slash'
+                    }
+                ]
+            },
+            gojo: {
+                name: '物調',
+                img: 'assets/players/player2/idle1/gojo.png',
+                maxHp: 1000,
+                atk: 200,
+                dodgeRate: 40,
+                skills: [
+                    {
+                        id: 'normal-attack',
+                        name: '普通打击',
+                        type: 'normal',
+                        damage: 100,
+                        hits: 1,
+                        cooldown: 0,
+                        effect: 'hit'
+                    },
+                    {
+                        id: 'energy-attack',
+                        name: '吸引力魔法',
+                        type: 'special',
+                        damage: 40,
+                        hits: 10,
+                        duration: 1000,
+                        cooldown: 1,
+                        effect: 'energy-ball'
+                    },
+                    {
+                        id: 'ultimate-gojo',
+                        name: '虚式',
+                        type: 'ultimate',
+                        damage: 1000,
+                        hits: 1,
+                        duration: 3000,
+                        cooldown: 0,
+                        effect: 'void'
+                    }
+                ]
+            }
+        };
+
+        // 敌人数据
+        const enemyData = [
+            {
+                id: 'goblin',
+                name: '哥布林',
+                img: 'assets/monsters/monster1/idle/ek1j.png',
+                maxHp: 2000,
+                atk: 20,
+                dodgeRate: 0
+            },
+            {
+                id: 'skeleton',
+                name: '骷髏人',
+                img: 'assets/monsters/monster2/idle1/djxb.png',
+                maxHp: 1500,
+                atk: 30,
+                dodgeRate: 0
+            },
+            {
+                id: 'tree-demon',
+                name: '巨樹妖',
+                img: 'assets/monsters/monster3/idle2/rmgj.png',
+                maxHp: 4000,
+                atk: 10,
+                dodgeRate: 0
+            },
+            {
+                id: 'slime',
+                name: '史萊姆',
+                img: 'assets/monsters/monster4/idle3/gx9a.png',
+                maxHp: 1000,
+                atk: 20,
+                dodgeRate: 0
+            },
+            {
+                id: 'xieminhong',
+                name: '謝旻宏',
+                img: 'assets/monsters/monster5/idle4/xlvu.png',
+                maxHp: 4000,
+                atk: 10,
+                dodgeRate: 0
+            }
+        ];
+
+        // 初始化游戏
+        function initGame() {
+            // 角色选择事件
+            document.querySelectorAll('.character-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedCharacter = card.dataset.character;
+                    startBtn.disabled = false;
+                });
+            });
+
+            // 开始游戏按钮
+            startBtn.addEventListener('click', startBattle);
+
+            // 重新开始按钮
+            restartBtn.addEventListener('click', restartGame);
+        }
+
+        // 开始战斗
+        function startBattle() {
+            // 隐藏选择界面，显示战斗界面
+            characterSelection.style.display = 'none';
+            battleScreen.style.display = 'block';
+
+            // 初始化玩家
+            const charData = characterData[selectedCharacter];
+            player = {
+                ...charData,
+                hp: charData.maxHp,
+                skills: [...charData.skills.map(skill => ({ ...skill }))]
+            };
+
+            // 渲染玩家
+            const playerElement = document.getElementById('player');
+            document.getElementById('player-img').src = player.img;
+            document.getElementById('player-name').textContent = player.name;
+            document.getElementById('player-health').style.width = '100%';
+
+            // 初始化敌人
+            enemies = [];
+            enemiesArea.innerHTML = '';
+            enemyData.forEach((enemy, index) => {
+                const enemyObj = {
+                    ...enemy,
+                    hp: enemy.maxHp,
+                    element: null
+                };
+                enemies.push(enemyObj);
+
+                // 渲染敌人
+                const enemyElement = document.createElement('div');
+                enemyElement.className = 'combatant enemy';
+                enemyElement.dataset.enemyIndex = index;
+                enemyElement.innerHTML = `
+                    <img class="combatant-img" src="${enemy.img}" alt="${enemy.name}">
+                    <div class="health-bar">
+                        <div class="health-fill" style="width: 100%;"></div>
+                    </div>
+                    <div class="combatant-name">${enemy.name}</div>
+                `;
+                enemiesArea.appendChild(enemyElement);
+                enemyObj.element = enemyElement;
+
+                // 入场动画延迟
+                setTimeout(() => {
+                    enemyElement.classList.add('visible');
+                }, 300 * index);
+            });
+
+            // 渲染技能按钮
+            skillsArea.innerHTML = '';
+            player.skills.forEach(skill => {
+                const skillBtn = document.createElement('button');
+                skillBtn.className = `skill-btn ${skill.type === 'ultimate' ? 'ultimate' : ''}`;
+                skillBtn.id = skill.id;
+                skillBtn.textContent = skill.name;
+                skillBtn.disabled = skill.type === 'ultimate'; // 终结技初始禁用
+                skillBtn.addEventListener('click', () => selectSkill(skill));
+                skillsArea.appendChild(skillBtn);
+                skillCooldowns[skill.id] = 0;
+            });
+
+            // 初始化冲能
+            energy = 0;
+            updateEnergyBar();
+
+            // 显示战斗开始消息
+            setTimeout(() => {
+                battleMessage.classList.add('visible');
+                playerElement.classList.add('visible');
+
+                // 3秒后隐藏消息，开始玩家回合
+                setTimeout(() => {
+                    battleMessage.classList.remove('visible');
+                    battleState = 'player-turn';
+                }, 3000);
+            }, 500);
+
+            // 敌人选择事件
+            document.querySelectorAll('.enemy').forEach(enemyElement => {
+                enemyElement.addEventListener('click', () => {
+                    if (battleState === 'player-turn' && currentSkill && !enemyElement.classList.contains('defeated')) {
+                        const enemyIndex = parseInt(enemyElement.dataset.enemyIndex);
+                        targetEnemy = enemies[enemyIndex];
+                        if (targetEnemy.hp > 0) {
+                            playerAttack();
+                        }
+                    }
+                });
+            });
+        }
+
+        // 选择技能
+        function selectSkill(skill) {
+            if (battleState !== 'player-turn' || skillCooldowns[skill.id] > 0) return;
+
+            // 终结技需要冲能100%
+            if (skill.type === 'ultimate' && energy < 100) {
+                showMessage('冲能不足！');
+                return;
+            }
+
+            // 取消之前的选择
+            document.querySelectorAll('.skill-btn').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector('.skill-btn#' + skill.id).classList.add('selected');
+            currentSkill = skill;
+            showMessage(`选择技能：${skill.name}`);
+        }
+
+        // 玩家攻击
+        async function playerAttack() {
+            battleState = 'player-attacking';
+            const playerElement = document.getElementById('player');
+            const skillBtn = document.querySelector('.skill-btn#' + currentSkill.id);
+
+            // 禁用所有技能按钮
+            document.querySelectorAll('.skill-btn').forEach(btn => btn.disabled = true);
+
+            // 显示攻击消息
+            showMessage(`${player.name}使用${currentSkill.name}！`);
+
+            // 攻击动画
+            playerElement.classList.add('attacking');
+
+            // 处理技能特效
+            if (currentSkill.effect === 'slash') {
+                // 连续斩击：10段伤害，每段0.1秒，共1秒
+                const hitDelay = currentSkill.duration / currentSkill.hits;
+                for (let i = 0; i < currentSkill.hits; i++) {
+                    await new Promise(resolve => setTimeout(resolve, hitDelay));
+                    if (targetEnemy.hp <= 0) break;
+                    dealDamage(player, targetEnemy, currentSkill);
+                    createSlashEffect(targetEnemy.element, false);
+                }
+            } else if (currentSkill.effect === 'hit') {
+                // 普通打击：1段伤害
+                await new Promise(resolve => setTimeout(resolve, 300));
+                dealDamage(player, targetEnemy, currentSkill);
+                createHitEffect(targetEnemy.element);
+            } else if (currentSkill.effect === 'energy-ball') {
+                // 吸引力魔法：创建蓝色球，10段伤害
+                const energyBall = createEnergyBall(targetEnemy.element);
+                const hitDelay = currentSkill.duration / currentSkill.hits;
+                for (let i = 0; i < currentSkill.hits; i++) {
+                    await new Promise(resolve => setTimeout(resolve, hitDelay));
+                    if (targetEnemy.hp <= 0) break;
+                    dealDamage(player, targetEnemy, currentSkill);
+                }
+                // 移除蓝色球
+                setTimeout(() => {
+                    if (energyBall.parentNode) {
+                        energyBall.parentNode.removeChild(energyBall);
+                    }
+                }, currentSkill.duration);
+            } else if (currentSkill.effect === 'long-slash') {
+                // 服魔御廚子：背景变黑，50段长斩击，共5秒
+                battleBackground.classList.add('darkened');
+                const hitDelay = currentSkill.duration / currentSkill.hits;
+                for (let i = 0; i < currentSkill.hits; i++) {
+                    await new Promise(resolve => setTimeout(resolve, hitDelay));
+                    // 对所有存活敌人造成伤害
+                    enemies.forEach(enemy => {
+                        if (enemy.hp > 0) {
+                            dealDamage(player, enemy, currentSkill);
+                            createSlashEffect(enemy.element, true);
+                        }
+                    });
+                }
+                // 恢复背景
+                setTimeout(() => {
+                    battleBackground.classList.remove('darkened');
+                }, currentSkill.duration);
+                // 消耗冲能
+                energy = 0;
+                updateEnergyBar();
+            } else if (currentSkill.effect === 'void') {
+                // 虚式：创建紫色球，变大后飞向敌人，爆炸
+                const voidBall = createVoidBall(player.element);
+                // 生成闪电特效
+                createLightningEffects(voidBall, 5);
+                // 2秒后飞向敌人
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                // 计算飞行距离
+                const playerRect = player.element.getBoundingClientRect();
+                const targetRect = targetEnemy.element.getBoundingClientRect();
+                const translateX = targetRect.left - playerRect.left;
+                const translateY = targetRect.top - playerRect.top;
+                voidBall.style.setProperty('--translate-x', `${translateX}px`);
+                voidBall.style.setProperty('--translate-y', `${translateY}px`);
+                voidBall.classList.remove('spawning');
+                voidBall.classList.add('flying');
+                // 到达后爆炸
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                createExplosionEffect(targetEnemy.element);
+                // 对所有存活敌人造成伤害
+                enemies.forEach(enemy => {
+                    if (enemy.hp > 0) {
+                        dealDamage(player, enemy, currentSkill);
+                    }
+                });
+                // 移除紫色球
+                if (voidBall.parentNode) {
+                    voidBall.parentNode.removeChild(voidBall);
+                }
+                // 消耗冲能
+                energy = 0;
+                updateEnergyBar();
+            }
+
+            // 攻击动画结束
+            await new Promise(resolve => setTimeout(resolve, 500));
+            playerElement.classList.remove('attacking');
+
+            // 检查敌人是否全灭
+            const allEnemiesDefeated = enemies.every(enemy => enemy.hp <= 0);
+            if (allEnemiesDefeated) {
+                setTimeout(() => {
+                    gameOver('victory');
+                }, 2000);
+                return;
+            }
+
+            // 技能冷却处理
+            if (currentSkill.cooldown > 0) {
+                skillCooldowns[currentSkill.id] = currentSkill.cooldown;
+                skillBtn.disabled = true;
+                skillBtn.textContent = `${currentSkill.name} (冷却中)`;
+            }
+
+            // 重置选择
+            currentSkill = null;
+            targetEnemy = null;
+            document.querySelectorAll('.skill-btn').forEach(btn => btn.classList.remove('selected'));
+
+            // 切换到敌人回合
+            setTimeout(() => {
+                enemyTurn();
+            }, 1000);
+        }
+
+        // 敌人回合
+        async function enemyTurn() {
+            battleState = 'enemy-attacking';
+            showMessage('敌人回合！');
+
+            // 遍历所有存活的敌人
+            for (const enemy of enemies) {
+                if (enemy.hp <= 0) continue;
+
+                // 敌人攻击动画
+                enemy.element.classList.add('attacking');
+                showMessage(`${enemy.name}攻击！`);
+
+                // 攻击延迟
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 计算闪避
+                const dodgeChance = Math.random() * 100;
+                if (dodgeChance < player.dodgeRate) {
+                    showMessage(`${player.name}闪避了攻击！`);
+                    enemy.element.classList.remove('attacking');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue;
+                }
+
+                // 造成伤害
+                const damage = enemy.atk;
+                player.hp = Math.max(0, player.hp - damage);
+                updateHealthBar(document.getElementById('player-health'), player.hp, player.maxHp);
+
+                // 受伤害效果
+                const playerElement = document.getElementById('player');
+                playerElement.classList.add('hurt');
+                setTimeout(() => {
+                    playerElement.classList.remove('hurt');
+                }, 300);
+
+                showMessage(`${player.name}受到${damage}点伤害！`);
+
+                // 检查玩家是否死亡
+                if (player.hp <= 0) {
+                    enemy.element.classList.remove('attacking');
+                    gameOver('defeat');
+                    return;
+                }
+
+                // 攻击结束
+                enemy.element.classList.remove('attacking');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // 回合结束，重置技能冷却
+            Object.keys(skillCooldowns).forEach(skillId => {
+                if (skillCooldowns[skillId] > 0) {
+                    skillCooldowns[skillId]--;
+                    const skillBtn = document.querySelector('.skill-btn#' + skillId);
+                    if (skillCooldowns[skillId] === 0) {
+                        skillBtn.disabled = false;
+                        const skill = player.skills.find(s => s.id === skillId);
+                        skillBtn.textContent = skill.name;
+                    } else {
+                        skillBtn.textContent = `${skillBtn.textContent.split('(')[0]} (冷却${skillCooldowns[skillId]}回合)`;
+                    }
+                }
+            });
+
+            // 启用终结技（如果冲能满）
+            const ultimateSkill = player.skills.find(s => s.type === 'ultimate');
+            if (energy >= 100) {
+                document.querySelector('.skill-btn#' + ultimateSkill.id).disabled = false;
+            }
+
+            // 启用普通技能
+            document.querySelectorAll('.skill-btn:not(.ultimate)').forEach(btn => {
+                const skillId = btn.id;
+                if (skillCooldowns[skillId] === 0) {
+                    btn.disabled = false;
+                }
+            });
+
+            // 切换到玩家回合
+            battleState = 'player-turn';
+            showMessage('玩家回合！');
+        }
+
+        // 造成伤害
+        function dealDamage(attacker, defender, skill) {
+            // 计算单段伤害
+            const damagePerHit = Math.floor((attacker.atk * skill.damage) / 100);
+            // 造成伤害
+            defender.hp = Math.max(0, defender.hp - damagePerHit);
+            // 更新生命值条
+            const healthBar = defender.element.querySelector('.health-fill');
+            updateHealthBar(healthBar, defender.hp, defender.maxHp);
+            // 受伤害效果
+            defender.element.classList.add('hurt');
+            setTimeout(() => {
+                defender.element.classList.remove('hurt');
+            }, 300);
+            // 增加冲能（玩家造成伤害时）
+            if (attacker === player) {
+                energy = Math.min(100, energy + 5);
+                updateEnergyBar();
+                // 启用终结技
+                const ultimateSkill = player.skills.find(s => s.type === 'ultimate');
+                if (energy >= 100) {
+                    document.querySelector('.skill-btn#' + ultimateSkill.id).disabled = false;
+                }
+            }
+            // 显示伤害消息
+            showMessage(`${defender.name}受到${damagePerHit}点伤害！`);
+            // 检查敌人是否死亡
+            if (defender.hp <= 0) {
+                defender.element.classList.add('defeated');
+                defender.element.style.opacity = 0.5;
+                showMessage(`${defender.name}被击败！`);
+            }
+        }
+
+        // 更新生命值条
+        function updateHealthBar(healthBarElement, currentHp, maxHp) {
+            const percentage = (currentHp / maxHp) * 100;
+            healthBarElement.style.width = `${percentage}%`;
+            // 生命值低时变色
+            if (percentage < 30) {
+                healthBarElement.style.background = '#ff4444';
+            } else if (percentage < 60) {
+                healthBarElement.style.background = '#ffaa00';
+            } else {
+                healthBarElement.style.background = '#00cc00';
+            }
+        }
+
+        // 更新冲能条
+        function updateEnergyBar() {
+            energyBar.style.width = `${energy}%`;
+            energyPercent.textContent = `${energy}%`;
+        }
+
+        // 显示战斗消息
+        function showMessage(text) {
+            battleMessage.textContent = text;
+            battleMessage.classList.add('visible');
+            setTimeout(() => {
+                battleMessage.classList.remove('visible');
+            }, 1500);
+        }
+
+        // 创建斩击特效
+        function createSlashEffect(targetElement, isLong) {
+            const slash = document.createElement('div');
+            slash.className = `effect slash-effect ${isLong ? 'long' : ''}`;
+            const targetRect = targetElement.getBoundingClientRect();
+            const battleRect = battleScreen.getBoundingClientRect();
+            // 随机位置和角度
+            const x = targetRect.left - battleRect.left + Math.random() * 50;
+            const y = targetRect.top - battleRect.top + Math.random() * 50;
+            const rotate = Math.random() * 360;
+            slash.style.left = `${x}px`;
+            slash.style.top = `${y}px`;
+            slash.style.setProperty('--rotate', `${rotate}deg`);
+            battleScreen.appendChild(slash);
+            // 激活动画
+            setTimeout(() => {
+                slash.classList.add('active');
+            }, 10);
+            // 移除特效
+            setTimeout(() => {
+                if (slash.parentNode) {
+                    slash.parentNode.removeChild(slash);
+                }
+            }, isLong ? 500 : 300);
+        }
+
+        // 创建打击特效
+        function createHitEffect(targetElement) {
+            const hit = document.createElement('div');
+            hit.className = 'effect hit-effect';
+            const targetRect = targetElement.getBoundingClientRect();
+            const battleRect = battleScreen.getBoundingClientRect();
+            const x = targetRect.left - battleRect.left + targetRect.width / 2 - 20;
+            const y = targetRect.top - battleRect.top + targetRect.height / 2 - 20;
+            hit.style.left = `${x}px`;
+            hit.style.top = `${y}px`;
+            battleScreen.appendChild(hit);
+            // 激活动画
+            setTimeout(() => {
+                hit.classList.add('active');
+            }, 10);
+            // 移除特效
+            setTimeout(() => {
+                if (hit.parentNode) {
+                    hit.parentNode.removeChild(hit);
+                }
+            }, 500);
+        }
+
+        // 创建蓝色球特效
+        function createEnergyBall(targetElement) {
+            const ball = document.createElement('div');
+            ball.className = 'effect energy-ball active';
+            const targetRect = targetElement.getBoundingClientRect();
+            const battleRect = battleScreen.getBoundingClientRect();
+            const x = targetRect.left - battleRect.left + targetRect.width / 2 - 50;
+            const y = targetRect.top - battleRect.top + targetRect.height / 2 - 50;
+            ball.style.left = `${x}px`;
+            ball.style.top = `${y}px`;
+            battleScreen.appendChild(ball);
+            return ball;
+        }
+
+        // 创建虚式紫色球特效
+        function createVoidBall(playerElement) {
+            const ball = document.createElement('div');
+            ball.className = 'effect void-ball spawning';
+            const playerRect = playerElement.getBoundingClientRect();
+            const battleRect = battleScreen.getBoundingClientRect();
+            const x = playerRect.left - battleRect.left + playerRect.width / 2 - 15;
+            const y = playerRect.top - battleRect.top + playerRect.height / 2 - 15;
+            ball.style.left = `${x}px`;
+            ball.style.top = `${y}px`;
+            battleScreen.appendChild(ball);
+            return ball;
+        }
+
+        // 创建闪电特效
+        function createLightningEffects(voidBall, count) {
+            for (let i = 0; i < count; i++) {
+                const lightning = document.createElement('div');
+                lightning.className = 'effect lightning-effect active';
+                const ballRect = voidBall.getBoundingClientRect();
+                const battleRect = battleScreen.getBoundingClientRect();
+                const x = ballRect.left - battleRect.left + ballRect.width / 2;
+                const y = ballRect.top - battleRect.top + Math.random() * ballRect.height;
+                const height = 20 + Math.random() * 40;
+                lightning.style.left = `${x}px`;
+                lightning.style.top = `${y}px`;
+                lightning.style.height = `${height}px`;
+                battleScreen.appendChild(lightning);
+                // 移除闪电
+                setTimeout(() => {
+                    if (lightning.parentNode) {
+                        lightning.parentNode.removeChild(lightning);
+                    }
+                }, 1000);
+            }
+        }
+
+        // 创建爆炸特效
+        function createExplosionEffect(targetElement) {
+            const explosion = document.createElement('div');
+            explosion.className = 'effect explosion-effect active';
+            const targetRect = targetElement.getBoundingClientRect();
+            const battleRect = battleScreen.getBoundingClientRect();
+            const x = targetRect.left - battleRect.left + targetRect.width / 2 - 50;
+            const y = targetRect.top - battleRect.top + targetRect.height / 2 - 50;
+            explosion.style.left = `${x}px`;
+            explosion.style.top = `${y}px`;
+            battleScreen.appendChild(explosion);
+            // 激活动画
+            setTimeout(() => {
+                explosion.classList.add('active');
+            }, 10);
+            // 移除特效
+            setTimeout(() => {
+                if (explosion.parentNode) {
+                    explosion.parentNode.removeChild(explosion);
+                }
+            }, 800);
+        }
+
+        // 游戏结束
+        function gameOver(result) {
+            battleState = 'game-over';
+            resultScreen.classList.add('visible');
+            if (result === 'victory') {
+                resultMessage.textContent = '游戏胜利！';
+                resultMessage.className = 'result-message victory';
+            } else {
+                resultMessage.textContent = '游戏失败！';
+                resultMessage.className = 'result-message defeat';
+            }
+
+            // 3秒后显示重新开始按钮
+            setTimeout(() => {
+                restartBtn.classList.add('visible');
+            }, 3000);
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            // 重置所有状态
+            selectedCharacter = null;
+            player = null;
+            enemies = [];
+            currentSkill = null;
+            targetEnemy = null;
+            isPlayerTurn = true;
+            skillCooldowns = {};
+            energy = 0;
+            battleState = 'ready';
+
+            // 隐藏战斗界面，显示选择界面
+            battleScreen.style.display = 'none';
+            characterSelection.style.display = 'block';
+
+            // 重置选择界面
+            document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
+            startBtn.disabled = true;
+
+            // 重置结果界面
+            resultScreen.classList.remove('visible');
+            restartBtn.classList.remove('visible');
+        }
+
+        // 初始化游戏
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
